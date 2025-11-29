@@ -6,19 +6,17 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"linkfast/write-api/dtos"
 	"linkfast/write-api/models"
 	"linkfast/write-api/utils/consts"
 	"log"
 	"strings"
 
 	"github.com/godruoyi/go-snowflake"
-	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
 
 type LinkRepository interface {
-	Create(dto dtos.CreateLinkDto) (*models.Links, error)
+	Create(link models.Links) (*models.Links, error)
 	GetByID(id int64) (*models.Links, error)
 	GetByShotCode(code string) (*models.Links, error)
 	ExistsByShotCode(code string) (bool, error)
@@ -34,13 +32,8 @@ func NewLinkRepository(db *gorm.DB) LinkRepository {
 	}
 }
 
-func (l *linkRepository) Create(dto dtos.CreateLinkDto) (*models.Links, error) {
+func (l *linkRepository) Create(link models.Links) (*models.Links, error) {
 	snowflake.SetMachineID(1)
-	link := models.Links{}
-
-	if err := copier.Copy(&link, &dto); err != nil {
-		return nil, consts.ErrInternal
-	}
 
 	link.ID = int64(snowflake.ID())
 
