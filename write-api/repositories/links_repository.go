@@ -76,7 +76,7 @@ func (l *linkRepository) ExistsByID(id int64) (bool, error) {
 	result := l.db.Where(&models.Links{ID: id}).Count(&count)
 
 	if result.Error != nil {
-		log.Fatalf("erro ao contar registros: %w", result.Error)
+		log.Fatalf("error counting records: %v", result.Error)
 		return false, consts.ErrInternalDB
 	}
 
@@ -106,7 +106,7 @@ func (l *linkRepository) ExistsByShotCode(code string) (bool, error) {
 	result := l.db.Model(&models.Links{}).Where("short_code = ?", code).Count(&count)
 
 	if result.Error != nil {
-		log.Fatalf("erro ao contar registros: %w", result.Error)
+		log.Fatalf("error counting records: %v", result.Error)
 		return false, consts.ErrInternalDB
 	}
 
