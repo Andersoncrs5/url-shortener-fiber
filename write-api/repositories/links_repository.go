@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"linkfast/write-api/models"
 	"linkfast/write-api/utils/consts"
 	"log"
@@ -25,6 +24,8 @@ type LinkRepository interface {
 	GetByID(id int64) (*models.Links, error)
 	GetByShotCode(code string) (*models.Links, error)
 	ExistsByShotCode(code string) (bool, error)
+	Delete(link *models.Links) error
+	ExistsByID(id int64) (bool, error)
 }
 
 type linkRepository struct {
@@ -48,10 +49,6 @@ func (l *linkRepository) Create(link models.Links) (*models.Links, error) {
 	link.SHORT_CODE = base
 
 	if err_db := l.db.Create(&link); err_db != nil {
-		if errors.Is(err_db.Error, gorm.ErrRecordNotFound) {
-			return nil, consts.ErrRecordNotFound
-		}
-
 		return nil, consts.ErrInternalDB
 	}
 
@@ -60,10 +57,10 @@ func (l *linkRepository) Create(link models.Links) (*models.Links, error) {
 
 func (l *linkRepository) GetByID(id int64) (*models.Links, error) {
 	link := models.Links{}
-	err := l.db.First(&link, id)
+	result := l.db.First(&link, id)
 
-	if err.Error != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, consts.ErrRecordNotFound
 		}
 
@@ -73,14 +70,27 @@ func (l *linkRepository) GetByID(id int64) (*models.Links, error) {
 	return &link, nil
 }
 
+func (l *linkRepository) ExistsByID(id int64) (bool, error) {
+	var count int64
+
+	result := l.db.Where(&models.Links{ID: id}).Count(&count)
+
+	if result.Error != nil {
+		log.Fatalf("erro ao contar registros: %w", result.Error)
+		return false, consts.ErrInternalDB
+	}
+
+	return count > 0, nil
+}
+
 func (l *linkRepository) GetByShotCode(code string) (*models.Links, error) {
 	link := models.Links{}
 
-	err := l.db.Where("short_code = ?", code).First(&link)
+	result := l.db.Where("short_code = ?", code).First(&link)
 
-	if err.Error != nil {
+	if result.Error != nil {
 
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, consts.ErrRecordNotFound
 		}
 
@@ -96,13 +106,14 @@ func (l *linkRepository) ExistsByShotCode(code string) (bool, error) {
 	result := l.db.Model(&models.Links{}).Where("short_code = ?", code).Count(&count)
 
 	if result.Error != nil {
-		return false, fmt.Errorf("erro ao contar registros: %w", result.Error)
+		log.Fatalf("erro ao contar registros: %w", result.Error)
+		return false, consts.ErrInternalDB
 	}
 
 	return count > 0, nil
 }
 
-func (l *linkRepository) Delete(link models.Links) error {
+func (l *linkRepository) Delete(link *models.Links) error {
 	result := l.db.Delete(link)
 
 	if result.Error != nil {
