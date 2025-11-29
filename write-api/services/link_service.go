@@ -11,12 +11,12 @@ import (
 )
 
 type LinkService interface {
-	Create(dto dtos.CreateLinkDto) (*models.Links, error)
-	GetByID(id int64) (*models.Links, error)
+	Create(dto dtos.CreateLinkDto) (*models.Links, error, int)
+	GetByID(id int64) (*models.Links, error, int)
 	ExistsByID(id int64) (bool, error)
-	GetByShotCode(code string) (*models.Links, error)
-	ExistsByShotCode(code string) (bool, error)
-	Delete(link *models.Links) error
+	GetByShotCode(code string) (*models.Links, error, int)
+	ExistsByShotCode(code string) (bool, error, int)
+	Delete(link *models.Links) (error, int)
 }
 
 type linkService struct {
@@ -29,18 +29,18 @@ func NewUserService(repo repositories.LinkRepository) LinkService {
 	}
 }
 
-func (l *linkService) Create(dto dtos.CreateLinkDto) (*models.Links, error) {
+func (l *linkService) Create(dto dtos.CreateLinkDto) (*models.Links, error, int) {
 	link := models.Links{}
 
 	if err := copier.Copy(dto, &link); err != nil {
 		log.Printf("Error the copier CreateLinkDto to Links: %v", err)
-		return nil, consts.ErrInternal
+		return nil, consts.ErrInternal, 500
 	}
 
 	return l.repo.Create(link)
 }
 
-func (l *linkService) GetByID(id int64) (*models.Links, error) {
+func (l *linkService) GetByID(id int64) (*models.Links, error, int) {
 	return l.repo.GetByID(id)
 }
 
@@ -48,14 +48,14 @@ func (l *linkService) ExistsByID(id int64) (bool, error) {
 	return l.repo.ExistsByID(id)
 }
 
-func (l *linkService) GetByShotCode(code string) (*models.Links, error) {
+func (l *linkService) GetByShotCode(code string) (*models.Links, error, int) {
 	return l.repo.GetByShotCode(code)
 }
 
-func (l *linkService) ExistsByShotCode(code string) (bool, error) {
+func (l *linkService) ExistsByShotCode(code string) (bool, error, int) {
 	return l.repo.ExistsByShotCode(code)
 }
 
-func (l *linkService) Delete(link *models.Links) error {
+func (l *linkService) Delete(link *models.Links) (error, int) {
 	return l.repo.Delete(link)
 }
