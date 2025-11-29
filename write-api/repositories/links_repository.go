@@ -9,6 +9,7 @@ import (
 	"linkfast/write-api/dtos"
 	"linkfast/write-api/models"
 	"linkfast/write-api/utils/consts"
+	"log"
 	"strings"
 
 	"github.com/godruoyi/go-snowflake"
@@ -20,6 +21,7 @@ type LinkRepository interface {
 	Create(dto dtos.CreateLinkDto) (*models.Links, error)
 	GetByID(id int64) (*models.Links, error)
 	GetByShotCode(code string) (*models.Links, error)
+	ExistsByShotCode(code string) (bool, error)
 }
 
 type linkRepository struct {
@@ -65,7 +67,11 @@ func (l *linkRepository) GetByID(id int64) (*models.Links, error) {
 	err := l.db.First(&link, id)
 
 	if err.Error != nil {
-		return nil, fmt.Errorf("Error the get link by id %v", err)
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			return nil, consts.ErrRecordNotFound
+		}
+
+		return nil, consts.ErrInternalDB
 	}
 
 	return &link, nil
@@ -77,17 +83,39 @@ func (l *linkRepository) GetByShotCode(code string) (*models.Links, error) {
 	err := l.db.Where("short_code = ?", code).First(&link)
 
 	if err.Error != nil {
-		return nil, fmt.Errorf("Error the get link by id %v", err)
+
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			return nil, consts.ErrRecordNotFound
+		}
+
+		return nil, consts.ErrInternalDB
 	}
 
 	return &link, nil
+}
+
+func (l *linkRepository) ExistsByShotCode(code string) (bool, error) {
+	var count int64
+
+	result := l.db.Model(&models.Links{}).Where("short_code = ?", code).Count(&count)
+
+	if result.Error != nil {
+		return false, fmt.Errorf("erro ao contar registros: %w", result.Error)
+	}
+
+	return count > 0, nil
+}
+
+func (l *linkRepository) Delete() {
+
 }
 
 func parseToBase64(id int64) (string, error) {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, id)
 	if err != nil {
-		return "", fmt.Errorf("Error the to write int64 to bytes: %v", err)
+		log.Fatalf("Error the to write int64 to bytes: %v", err)
+		return "", consts.ErrInternal
 	}
 
 	encodedID := base64.RawURLEncoding.EncodeToString(buf.Bytes())
