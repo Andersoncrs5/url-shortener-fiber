@@ -8,14 +8,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-var DB *pgx.Conn
+var DB *gorm.DB
 
-func ConnectDB() *pgx.Conn {
+func ConnectDB() *gorm.DB {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 		panic("Err the load file .env")
@@ -35,41 +35,42 @@ func ConnectDB() *pgx.Conn {
 			log.Fatal("POSTGRES_URL or PG_USER/PG_PASSWORD/PG_HOST/PG_PORT/PG_DBNAME not defined in .env")
 		}
 
-		PG_URL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
+		PG_URL = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=America/Sao_Paulo",
+			host, user, password, dbname, port)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	db, err := gorm.Open(postgres.Open(PG_URL), &gorm.Config{
+		// Ex: Logger: logger.Default.LogMode(logger.Info),
+	})
+
+	if err != nil {
+		log.Fatalf("Falha ao conectar ao PostgreSQL usando GORM: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Falha ao obter o SQL DB: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	conn, err := pgx.Connect(ctx, PG_URL)
-	if err != nil {
-		log.Fatalf("Falha ao conectar ao PostgreSQL: %v", err)
-	}
-
-	err = conn.Ping(ctx)
-	if err != nil {
-		conn.Close(context.Background())
+	if err = sqlDB.PingContext(ctx); err != nil {
 		log.Fatalf("Failed to ping PostgreSQL: %v", err)
 	}
 
-	DB = conn
-	fmt.Println("PostgreSQL connected successfully!")
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	DB = db
+	fmt.Println("PostgreSQL connected successfully using GORM!")
 	return DB
 }
 
-func CloseDB() {
-	if DB != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		err := DB.Close(ctx)
-		if err != nil {
-			log.Printf("Error closing the connection to PostgreSQL.: %v", err)
-		} else {
-			fmt.Println("Connection to PostgreSQL closed.")
-		}
-	}
-}
-
+// Função de Migração mantida, agora usando o *gorm.DB
 func Migrate(db *gorm.DB) error {
+	fmt.Println("Running migrations...")
 	return db.AutoMigrate(&models.Links{})
 }
+
+// CloseDB foi removida/comentada, pois GORM gerencia o ciclo de vida do pool.
