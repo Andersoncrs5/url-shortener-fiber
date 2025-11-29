@@ -3,12 +3,14 @@ package configs
 import (
 	"context"
 	"fmt"
+	"linkfast/write-api/models"
 	"log"
 	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
+	"gorm.io/gorm"
 )
 
 var DB *pgx.Conn
@@ -66,4 +68,8 @@ func CloseDB() {
 			fmt.Println("Connection to PostgreSQL closed.")
 		}
 	}
+}
+
+func Migrate(db *gorm.DB) error {
+	return db.AutoMigrate(&models.Links{})
 }
