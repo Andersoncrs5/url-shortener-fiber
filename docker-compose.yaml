@@ -1,6 +1,9 @@
+version: '3.8'
+
 services:
+  
   db:
-    image: postgres:latest
+    image: postgres:18
     container_name: postgres_links_go
     ports:
       - "5432:5432"
@@ -10,11 +13,61 @@ services:
       POSTGRES_PASSWORD: 12345678
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    command: -c wal_level=logical -c max_wal_senders=10 -c max_replication_slots=10
-
-  redpanda:
-
-  connect:
-
+    
+    networks:
+      - linkfast_net 
+  
+  cassandra-node1:
+    image: cassandra:latest
+    container_name: cassandra-node1
+    hostname: cassandra-node1
+    ports:
+      - "9042:9042" 
+    environment:
+      CASSANDRA_CLUSTER_NAME: 'LinkFastCluster'
+      CASSANDRA_AUTHENTICATOR: 'PasswordAuthenticator'
+      CASSANDRA_SEEDS: 'cassandra-node1'
+      CASSANDRA_LISTEN_ADDRESS: cassandra-node1
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-node1
+      CASSANDRA_RPC_ADDRESS: 0.0.0.0 
+    volumes:
+      - scylla_data1:/var/lib/cassandra
+    networks:
+      - linkfast_net
+    healthcheck:
+      test: ["CMD", "cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", "describe keyspaces"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+  
+  cassandra-node2:
+    image: cassandra:latest
+    container_name: cassandra-node2
+    hostname: cassandra-node2
+    environment:
+      CASSANDRA_CLUSTER_NAME: 'LinkFastCluster'
+      CASSANDRA_SEEDS: 'cassandra-node1'
+      CASSANDRA_AUTHENTICATOR: 'PasswordAuthenticator'
+      CASSANDRA_LISTEN_ADDRESS: cassandra-node2
+      CASSANDRA_BROADCAST_ADDRESS: cassandra-node2
+      CASSANDRA_RPC_ADDRESS: 0.0.0.0
+    volumes:
+      - scylla_data2:/var/lib/cassandra
+    networks:
+      - linkfast_net
+    healthcheck:
+      test: ["CMD", "cqlsh", "-u", "cassandra", "-p", "cassandra", "-e", "describe keyspaces"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    
+networks: 
+  linkfast_net: 
+    driver: bridge 
+    
 volumes:
   postgres-data: {}
+  scylla_data1: {}
+  scylla_data2: {}
