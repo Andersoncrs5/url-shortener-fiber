@@ -15,6 +15,11 @@ import (
 	"gorm.io/gorm"
 )
 
+func init() {
+	snowflake.SetMachineID(1)
+	log.Println("Snowflake Machine ID set to 1.")
+}
+
 type LinkRepository interface {
 	Create(link models.Links) (*models.Links, error)
 	GetByID(id int64) (*models.Links, error)
@@ -33,8 +38,6 @@ func NewLinkRepository(db *gorm.DB) LinkRepository {
 }
 
 func (l *linkRepository) Create(link models.Links) (*models.Links, error) {
-	snowflake.SetMachineID(1)
-
 	link.ID = int64(snowflake.ID())
 
 	base, err := parseToBase64(link.ID)
@@ -99,8 +102,19 @@ func (l *linkRepository) ExistsByShotCode(code string) (bool, error) {
 	return count > 0, nil
 }
 
-func (l *linkRepository) Delete() {
+func (l *linkRepository) Delete(link models.Links) error {
+	result := l.db.Delete(link)
 
+	if result.Error != nil {
+		log.Fatalf("Error the delete link %v", result.Error.Error())
+		return consts.ErrInternalDB
+	}
+
+	if result.RowsAffected == 0 {
+		return consts.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 func parseToBase64(id int64) (string, error) {
