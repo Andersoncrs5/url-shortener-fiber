@@ -20,11 +20,11 @@ func init() {
 }
 
 type LinkRepository interface {
-	Create(link models.Links) (*models.Links, error)
-	GetByID(id int64) (*models.Links, error)
-	GetByShotCode(code string) (*models.Links, error)
-	ExistsByShotCode(code string) (bool, error)
-	Delete(link *models.Links) error
+	Create(link models.Links) (*models.Links, error, int)
+	GetByID(id int64) (*models.Links, error, int)
+	GetByShotCode(code string) (*models.Links, error, int)
+	ExistsByShotCode(code string) (bool, error, int)
+	Delete(link *models.Links) (error, int)
 	ExistsByID(id int64) (bool, error)
 }
 
@@ -38,36 +38,36 @@ func NewLinkRepository(db *gorm.DB) LinkRepository {
 	}
 }
 
-func (l *linkRepository) Create(link models.Links) (*models.Links, error) {
+func (l *linkRepository) Create(link models.Links) (*models.Links, error, int) {
 	link.ID = int64(snowflake.ID())
 
 	base, err := parseToBase64(link.ID)
 	if err != nil {
-		return nil, consts.ErrInternal
+		return nil, consts.ErrInternal, 500
 	}
 
 	link.SHORT_CODE = base
 
 	if err_db := l.db.Create(&link); err_db != nil {
-		return nil, consts.ErrInternalDB
+		return nil, consts.ErrInternalDB, 500
 	}
 
-	return &link, nil
+	return &link, nil, 201
 }
 
-func (l *linkRepository) GetByID(id int64) (*models.Links, error) {
+func (l *linkRepository) GetByID(id int64) (*models.Links, error, int) {
 	link := models.Links{}
 	result := l.db.First(&link, id)
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, consts.ErrRecordNotFound
+			return nil, consts.ErrRecordNotFound, 404
 		}
 
-		return nil, consts.ErrInternalDB
+		return nil, consts.ErrInternalDB, 500
 	}
 
-	return &link, nil
+	return &link, nil, 200
 }
 
 func (l *linkRepository) ExistsByID(id int64) (bool, error) {
@@ -83,7 +83,7 @@ func (l *linkRepository) ExistsByID(id int64) (bool, error) {
 	return count > 0, nil
 }
 
-func (l *linkRepository) GetByShotCode(code string) (*models.Links, error) {
+func (l *linkRepository) GetByShotCode(code string) (*models.Links, error, int) {
 	link := models.Links{}
 
 	result := l.db.Where("short_code = ?", code).First(&link)
@@ -91,41 +91,41 @@ func (l *linkRepository) GetByShotCode(code string) (*models.Links, error) {
 	if result.Error != nil {
 
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, consts.ErrRecordNotFound
+			return nil, consts.ErrRecordNotFound, 404
 		}
 
-		return nil, consts.ErrInternalDB
+		return nil, consts.ErrInternalDB, 500
 	}
 
-	return &link, nil
+	return &link, nil, 200
 }
 
-func (l *linkRepository) ExistsByShotCode(code string) (bool, error) {
+func (l *linkRepository) ExistsByShotCode(code string) (bool, error, int) {
 	var count int64
 
 	result := l.db.Model(&models.Links{}).Where("short_code = ?", code).Count(&count)
 
 	if result.Error != nil {
 		log.Fatalf("error counting records: %v", result.Error)
-		return false, consts.ErrInternalDB
+		return false, consts.ErrInternalDB, 500
 	}
 
-	return count > 0, nil
+	return count > 0, nil, 200
 }
 
-func (l *linkRepository) Delete(link *models.Links) error {
+func (l *linkRepository) Delete(link *models.Links) (error, int) {
 	result := l.db.Delete(link)
 
 	if result.Error != nil {
 		log.Fatalf("Error the delete link %v", result.Error.Error())
-		return consts.ErrInternalDB
+		return consts.ErrInternalDB, 500
 	}
 
 	if result.RowsAffected == 0 {
-		return consts.ErrRecordNotFound
+		return consts.ErrRecordNotFound, 404
 	}
 
-	return nil
+	return nil, 200
 }
 
 func parseToBase64(id int64) (string, error) {
