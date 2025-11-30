@@ -2,6 +2,10 @@ package models
 
 import "time"
 
+func (Links) TableName() string {
+	return "link_fast_sc.links"
+}
+
 type Links struct {
 	ID         int64      `json:"id" gorm:"primaryKey;type:bigint;not null"`
 	SHORT_CODE string     `json:"short_code" gorm:"type:varchar(12);uniqueIndex;not null"`
