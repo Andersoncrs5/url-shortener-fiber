@@ -25,8 +25,8 @@ func getEnvWithFallback(key, fallback string) string {
 }
 
 type DebeziumConnectorConfig struct {
-	Name   string            `json:"name"`
-	Config map[string]string `json:"config"`
+	Name   string                 `json:"name"`
+	Config map[string]interface{} `json:"config"`
 }
 
 func ConnectDB() *gorm.DB {
@@ -53,12 +53,12 @@ func ConnectDB() *gorm.DB {
 	})
 
 	if err != nil {
-		log.Fatalf("Falha ao conectar ao PostgreSQL usando GORM: %v", err)
+		log.Printf("Failed to connect to PostgreSQL using GORM: %v", err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("Falha ao obter o SQL DB: %v", err)
+		log.Fatalf("Failed to retrieve the SQL DB: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -81,37 +81,37 @@ func ConfiguredCDC(db *gorm.DB) error {
 
 	err := db.Exec("CREATE USER debezium;").Error
 	if err != nil && err.Error() != "ERROR: role \"debezium\" already exists (SQLSTATE 42710)" {
-		log.Printf("Falha ao criar o usuário debezium: %v", err)
+		log.Printf("Failed to create user debezium.: %v", err)
 	}
 
 	err = db.Exec("ALTER USER debezium WITH PASSWORD '12345678' REPLICATION LOGIN;").Error
 	if err != nil {
-		log.Printf("Falha ao configurar a senha e login de replicação para debezium: %v", err)
+		log.Printf("Failed to configure the replication password and login for debezium.: %v", err)
 	}
 
 	err = db.Exec("CREATE ROLE replication_group;").Error
 	if err != nil && err.Error() != "ERROR: role \"replication_group\" already exists (SQLSTATE 42710)" {
-		log.Printf("Falha ao criar o role replication_group: %v", err)
+		log.Printf("Failed to create the replication_group role.: %v", err)
 	}
 
 	db.Exec("GRANT replication_group TO postgres;")
 	err = db.Exec("GRANT replication_group TO debezium;").Error
 	if err != nil {
-		log.Printf("Falha ao conceder role 'replication_group' ao 'debezium': %v", err)
+		log.Printf("Failed to grant role 'replication_group' to 'debezium': %v", err)
 	}
 
 	err = db.Exec("GRANT USAGE ON SCHEMA link_fast_sc TO replication_group;").Error
 	if err != nil {
-		log.Printf("Falha ao conceder USAGE em link_fast_sc para replication_group: %v", err)
+		log.Printf("Failed to grant USAGE on link_fast_sc for replication_group: %v", err)
 	}
 
 	err = db.Exec("GRANT SELECT ON ALL TABLES IN SCHEMA link_fast_sc TO replication_group;").Error
 	if err != nil {
-		log.Printf("Aviso: Falha ao conceder SELECT em tabelas existentes (pode ser ignorado se for a primeira migração): %v", err)
+		log.Printf("Warning: Failed to grant SELECT on existing tables (can be ignored if this is the first migration): %v", err)
 	}
 	err = db.Exec("ALTER DEFAULT PRIVILEGES IN SCHEMA link_fast_sc GRANT SELECT ON TABLES TO replication_group;").Error
 	if err != nil {
-		log.Printf("Falha ao conceder SELECT em tabelas futuras: %v", err)
+		log.Printf("Failed to grant SELECT on future tables.: %v", err)
 	}
 
 	fmt.Println("CDC users and permissions configured.")
@@ -123,12 +123,12 @@ func PostMigrationSetup(db *gorm.DB) error {
 
 	err := db.Exec("CREATE PUBLICATION dbz_publication FOR TABLE link_fast_sc.links;").Error
 	if err != nil && err.Error() != "ERROR: publication \"dbz_publication\" already exists (SQLSTATE 42710)" {
-		log.Printf("Falha ao criar PUBLICATION para links: %v", err)
+		log.Printf("Failed to create PUBLICATION for links.: %v", err)
 	}
 
 	fmt.Println("Setting table owner...")
 	if err := db.Exec("ALTER TABLE link_fast_sc.links OWNER TO replication_group;").Error; err != nil {
-		log.Printf("Falha ao alterar OWNER da tabela links: %v", err)
+		log.Printf("Failed to change OWNER in the links table.: %v", err)
 	}
 
 	fmt.Println("Post-migration setup complete.")
@@ -141,10 +141,29 @@ func RegisterDebeziumConnector() error {
 	LINK_DB := getEnvWithFallback("LINK_DB", "")
 	PG_PORT := getEnvWithFallback("PG_PORT", "")
 	API_URL_CONNECT := getEnvWithFallback("API_URL_CONNECT", "")
+	TOPIC_PREFIX := getEnvWithFallback("TOPIC_PREFIX", "")
+
+	required := map[string]string{
+		"DATABASE_HOSTNAME": DATABASE_HOSTNAME,
+		"USER_CDC":          USER_CDC,
+		"USER_PASSWORD_CDC": USER_PASSWORD_CDC,
+		"LINK_DB":           LINK_DB,
+		"PG_PORT":           PG_PORT,
+		"API_URL_CONNECT":   API_URL_CONNECT,
+		"TOPIC_PREFIX":      TOPIC_PREFIX,
+	}
+
+	for key, value := range required {
+		if value == "" {
+			log.Fatalf("Environment variable %s not defined!", key)
+		}
+	}
+
+	log.Println("All required environment variables to cdc loaded successfully!")
 
 	connectorConfig := DebeziumConnectorConfig{
 		Name: "postgres-cdc",
-		Config: map[string]string{
+		Config: map[string]interface{}{
 			"connector.class":   "io.debezium.connector.postgresql.PostgresConnector",
 			"database.hostname": DATABASE_HOSTNAME,
 			"database.port":     PG_PORT,
@@ -158,30 +177,37 @@ func RegisterDebeziumConnector() error {
 			"schema.include.list": "link_fast_sc",
 			"table.include.list":  "link_fast_sc.links",
 
-			"topic.prefix": "pgserver1",
+			"topic.prefix": TOPIC_PREFIX,
 
 			"tombstones.on.delete":   "false",
 			"include.schema.changes": "false",
 
 			"publication.name": "dbz_publication",
+
+			"transforms.unwrap.type":            "io.debezium.transforms.ExtractNewRecordState",
+			"decimal.handling.mode":             "string",
+			"hstore.handling.mode":              "json",
+			"topic.creation.default.partitions": 1,
+
+			"topic.creation.enable": true,
 		},
 	}
 
 	body, err := json.Marshal(connectorConfig)
 	if err != nil {
-		log.Printf("erro ao serializar config do conector: %v", err)
+		log.Printf("Error serializing connector configuration.: %v", err)
 	}
 
 	req, err := http.NewRequest("POST", API_URL_CONNECT, bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("erro ao criar requisição HTTP: %v", err)
+		log.Printf("Error creating HTTP request.: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("erro ao enviar requisição para Kafka Connect API. Verifique se o Kafka Connect está rodando e acessível em %s: %v", API_URL_CONNECT, err)
+		log.Printf("Error sending request to Kafka Connect API. Verify that Kafka Connect is running and accessible at %s: %v", API_URL_CONNECT, err)
 	}
 	defer resp.Body.Close()
 
@@ -190,14 +216,14 @@ func RegisterDebeziumConnector() error {
 		json.NewDecoder(resp.Body).Decode(&errorBody)
 
 		if msg, ok := errorBody["message"].(string); ok && resp.StatusCode == 409 {
-			fmt.Printf("Aviso: Conector Debezium já registrado. Status: %s\n", msg)
+			fmt.Printf("Warning: Debezium connector already registered. Status: %s\n", msg)
 			return nil
 		}
 
-		log.Printf("falha ao registrar conector Debezium. Status: %s. Erro: %v", resp.Status, errorBody)
+		log.Printf("Failed to register Debezium connector. Status: %s. Error: %v", resp.Status, errorBody)
 	}
 
-	fmt.Println("Conector Debezium registrado com sucesso!")
+	fmt.Println("Debezium connector successfully registered!")
 	return nil
 }
 
@@ -208,22 +234,12 @@ func Migrate(db *gorm.DB) error {
 		log.Printf("failed to create schema 'link_fast_sc': %v", err)
 	}
 
-	if err := ConfiguredCDC(db); err != nil {
-		return err
-	}
+	ConfiguredCDC(db)
 
-	fmt.Println("Running migrations...")
-	if err := db.AutoMigrate(&models.Links{}); err != nil {
-		log.Printf("Error the auto migrate: %v", err)
-	}
+	log.Println("Running migrations...")
+	db.AutoMigrate(&models.Links{})
+	PostMigrationSetup(db)
 
-	if err := PostMigrationSetup(db); err != nil {
-		log.Printf("Error the PostMigrationSetup: %v", err)
-	}
-
-	if err := RegisterDebeziumConnector(); err != nil {
-		log.Printf("erro ao registrar conector CDC: %v", err)
-	}
-
+	RegisterDebeziumConnector()
 	return nil
 }
