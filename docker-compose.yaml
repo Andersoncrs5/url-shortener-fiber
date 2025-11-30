@@ -64,6 +64,27 @@ services:
     volumes:
       - ./plugins:/etc/kafka-connect/jars
         
+  write_api:
+    build: ./write-api
+    container_name: write_api
+    depends_on:
+      - kafka
+      - db
+    ports:
+      - "8888:8888"
+    environment:
+      PG_URL: postgres://postgres:12345678@db:5432/links_db?sslmode=disable"
+      PG_USER: postgres
+      PG_PASSWORD: 12345678
+      PG_HOST: db
+      PG_PORT: 5432
+
+      PG_DBNAME: links_db
+      DATABASE_HOSTNAME: db
+      USER_CDC: debezium
+      USER_PASSWORD_CDC: 12345678
+      LINK_DB: links_db
+
 volumes:
   postgres-data: {}
   kafka-data: {}
