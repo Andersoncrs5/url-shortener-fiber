@@ -28,7 +28,7 @@ type linkHandler struct {
 	service services.LinkService
 }
 
-func NewTaskHandler(service services.LinkService) LinkHandler {
+func NewLinkHandler(service services.LinkService) LinkHandler {
 	return &linkHandler{service: service}
 }
 
@@ -317,10 +317,10 @@ func (h *linkHandler) Delete(c *fiber.Ctx) error {
 	if err_delete != nil {
 		response := res.ResponseHttp[string]{
 			Timestamp: time.Now(),
-			Payload:   err_get.Error(),
+			Payload:   err_delete.Error(),
 			Code:      fiber.StatusInternalServerError,
 			Status:    false,
-			Message:   err_get.Error(),
+			Message:   err_delete.Error(),
 			Version:   1,
 			TraceID:   traceID,
 			Path:      "",

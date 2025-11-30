@@ -23,7 +23,7 @@ type linkService struct {
 	repo repositories.LinkRepository
 }
 
-func NewUserService(repo repositories.LinkRepository) LinkService {
+func NewLinkService(repo repositories.LinkRepository) LinkService {
 	return &linkService{
 		repo: repo,
 	}

@@ -24,8 +24,8 @@ func main() {
 	configs.Migrate(db)
 
 	linkRepository := repositories.NewLinkRepository(db)
-	linkService := services.NewUserService(linkRepository)
-	linkHandler := handlers.NewTaskHandler(linkService)
+	linkService := services.NewLinkService(linkRepository)
+	linkHandler := handlers.NewLinkHandler(linkService)
 
 	routers.LinkRoute(app, linkHandler)
 
