@@ -8,6 +8,7 @@ import (
 	"linkfast/write-api/services"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
 func main() {
@@ -15,6 +16,12 @@ func main() {
 
 	configs.ConnectDB()
 	db := configs.DB
+
+	app.Use(requestid.New(requestid.Config{
+		ContextKey: "trace_id",
+	}))
+
+	configs.Migrate(db)
 
 	linkRepository := repositories.NewLinkRepository(db)
 	linkService := services.NewUserService(linkRepository)
