@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -142,6 +143,11 @@ func RegisterDebeziumConnector() error {
 	PG_PORT := getEnvWithFallback("PG_PORT", "")
 	API_URL_CONNECT := getEnvWithFallback("API_URL_CONNECT", "")
 	TOPIC_PREFIX := getEnvWithFallback("TOPIC_PREFIX", "")
+	PARTITIONS_STR := getEnvWithFallback("PARTITIONS_STR", "")
+	BATCH_SIZE := getEnvWithFallback("BATCH_SIZE", "")
+	QUEUE_SIZE := getEnvWithFallback("QUEUE_SIZE", "")
+
+	PARTITIONS_INT, err_parse := strconv.Atoi(PARTITIONS_STR)
 
 	required := map[string]string{
 		"DATABASE_HOSTNAME": DATABASE_HOSTNAME,
@@ -151,12 +157,19 @@ func RegisterDebeziumConnector() error {
 		"PG_PORT":           PG_PORT,
 		"API_URL_CONNECT":   API_URL_CONNECT,
 		"TOPIC_PREFIX":      TOPIC_PREFIX,
+		"PARTITIONS_STR":    PARTITIONS_STR,
+		"BATCH_SIZE":        BATCH_SIZE,
+		"QUEUE_SIZE":        QUEUE_SIZE,
 	}
 
 	for key, value := range required {
 		if value == "" {
 			log.Fatalf("Environment variable %s not defined!", key)
 		}
+	}
+
+	if err_parse != nil {
+		log.Fatalf("Error parse PARTITIONS_STR to PARTITIONS_INT")
 	}
 
 	log.Println("All required environment variables to cdc loaded successfully!")
@@ -184,30 +197,31 @@ func RegisterDebeziumConnector() error {
 
 			"publication.name": "dbz_publication",
 
-			"transforms.unwrap.type":            "io.debezium.transforms.ExtractNewRecordState",
 			"decimal.handling.mode":             "string",
 			"hstore.handling.mode":              "json",
-			"topic.creation.default.partitions": 1,
+			"topic.creation.default.partitions": PARTITIONS_INT,
 
 			"topic.creation.enable": true,
+			"max.batch.size":        BATCH_SIZE,
+			"max.queue.size":        QUEUE_SIZE,
 		},
 	}
 
-	body, err := json.Marshal(connectorConfig)
-	if err != nil {
-		log.Printf("Error serializing connector configuration.: %v", err)
+	body, err_parse := json.Marshal(connectorConfig)
+	if err_parse != nil {
+		log.Printf("Error serializing connector configuration.: %v", err_parse)
 	}
 
-	req, err := http.NewRequest("POST", API_URL_CONNECT, bytes.NewBuffer(body))
-	if err != nil {
-		log.Printf("Error creating HTTP request.: %v", err)
+	req, err_parse := http.NewRequest("POST", API_URL_CONNECT, bytes.NewBuffer(body))
+	if err_parse != nil {
+		log.Printf("Error creating HTTP request.: %v", err_parse)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Error sending request to Kafka Connect API. Verify that Kafka Connect is running and accessible at %s: %v", API_URL_CONNECT, err)
+	resp, err_parse := client.Do(req)
+	if err_parse != nil {
+		log.Printf("Error sending request to Kafka Connect API. Verify that Kafka Connect is running and accessible at %s: %v", API_URL_CONNECT, err_parse)
 	}
 	defer resp.Body.Close()
 
