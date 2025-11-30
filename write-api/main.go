@@ -7,12 +7,16 @@ import (
 	"linkfast/write-api/routers"
 	"linkfast/write-api/services"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
 func main() {
+	log.Print("Waiting the another container startup.........")
+	time.Sleep(20 * time.Second)
+
 	app := fiber.New()
 
 	configs.ConnectDB()
