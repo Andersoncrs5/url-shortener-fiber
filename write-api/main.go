@@ -6,6 +6,7 @@ import (
 	"linkfast/write-api/repositories"
 	"linkfast/write-api/routers"
 	"linkfast/write-api/services"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
