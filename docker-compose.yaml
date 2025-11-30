@@ -11,6 +11,8 @@ services:
       POSTGRES_PASSWORD: 12345678
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
+    command: postgres -c wal_level=logical
    
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -68,12 +70,13 @@ services:
     build: ./write-api
     container_name: write_api
     depends_on:
+      - connect 
       - kafka
       - db
     ports:
       - "8888:8888"
     environment:
-      PG_URL: postgres://postgres:12345678@db:5432/links_db?sslmode=disable"
+      PG_URL: postgres://postgres:12345678@db:5432/links_db?sslmode=disable
       PG_USER: postgres
       PG_PASSWORD: 12345678
       PG_HOST: db
@@ -84,6 +87,8 @@ services:
       USER_CDC: debezium
       USER_PASSWORD_CDC: 12345678
       LINK_DB: links_db
+
+      API_URL_CONNECT: http://connect:8083/connectors
 
 volumes:
   postgres-data: {}
