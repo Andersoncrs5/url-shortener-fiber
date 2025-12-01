@@ -23,19 +23,16 @@ func NewLinkService(repo repositories.LinkRepository) LinkService {
 	}
 }
 
-// ApplyLogic: Recebe o contexto.
 func (l *linkService) ApplyLogic(ctx context.Context, envelope cdc.Envelope) {
 	op := envelope.Payload.Op
 
 	switch op {
 	case "c", "u", "r":
-		// Chamada atualizada para passar o contexto
 		l.Upsert(ctx, envelope)
 
 	case "d":
-		if idFloat, ok := envelope.Payload.Before["id"].(float64); ok {
-			// Chamada atualizada para passar o contexto
-			l.Delete(ctx, int64(idFloat))
+		if idFloat, ok := envelope.Payload.Before["id"].(int64); ok {
+			l.Delete(ctx, idFloat)
 		} else {
 			log.Printf("ERROR: Delete operation received, but 'id' not found in 'Before' payload or is not numeric. Op: %s", op)
 		}
@@ -45,11 +42,13 @@ func (l *linkService) ApplyLogic(ctx context.Context, envelope cdc.Envelope) {
 	}
 }
 
-// Upsert: Recebe o contexto.
 func (l *linkService) Upsert(ctx context.Context, envelope cdc.Envelope) {
-	link := cdc.GetLinkFromAfter(envelope)
+	link, err_after := cdc.GetLinkFromAfter(envelope)
 
-	// Chamada de repositório atualizada para passar o contexto
+	if err_after != nil {
+		log.Fatalf("Error the get after of envelope! Details error: %v", err_after)
+	}
+
 	if _, err := l.repo.Upsert(ctx, &link); err != nil {
 		log.Printf("ERROR: Failed to upsert document [ID: %d, Short Code: %s]: %v", link.ID, link.SHORT_CODE, err)
 		return
@@ -58,9 +57,7 @@ func (l *linkService) Upsert(ctx context.Context, envelope cdc.Envelope) {
 	log.Printf("SUCCESS: Document Upserted (Op: %s) [ID: %d, Short Code: %s]", envelope.Payload.Op, link.ID, link.SHORT_CODE)
 }
 
-// Delete: Recebe o contexto.
 func (l *linkService) Delete(ctx context.Context, id int64) {
-	// Chamada de repositório atualizada para passar o contexto
 	err := l.repo.Delete(ctx, id)
 
 	if err != nil {
