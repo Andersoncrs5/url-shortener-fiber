@@ -1,6 +1,9 @@
 package consumer
 
 import (
+	"context"
+	"linkfast/url-projector/cdc"
+	"linkfast/url-projector/services"
 	"log"
 	"time"
 
@@ -9,7 +12,7 @@ import (
 
 var consumerGroupID = "link_fast_group"
 
-func LinkConsumer(brokers, topic string) {
+func LinkConsumer(brokers, topic string, service services.LinkService) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":  brokers,
 		"group.id":           consumerGroupID,
@@ -30,13 +33,16 @@ func LinkConsumer(brokers, topic string) {
 	for {
 		msg, err := consumer.ReadMessage(time.Second)
 		if err == nil {
+			var envelope cdc.Envelope
 
-			log.Printf("Mensagem recebida do Tópico %s [%d] em Offset %v",
-				*msg.TopicPartition.Topic,
-				msg.TopicPartition.Partition,
-				msg.TopicPartition.Offset)
+			if err := cdc.ParseToEnvelope(msg.Value, &envelope); err != nil {
+				log.Printf("%s", err.Error())
+				return
+			}
 
-			log.Print(msg.Key)
+			ctx := context.Background()
+
+			service.ApplyLogic(ctx, envelope)
 
 		} else {
 			if kafkaErr, ok := err.(kafka.Error); ok && kafkaErr.Code() != kafka.ErrTimedOut {
