@@ -32,17 +32,17 @@ func ParseToEnvelope(value []byte, envelope *Envelope) error {
 
 func parseTime(raw interface{}, fieldName string) (time.Time, error) {
 	if raw == nil {
-		return time.Time{}, fmt.Errorf("campo obrigatório '%s' está nulo", fieldName)
+		return time.Time{}, fmt.Errorf("the field required %s is null", fieldName)
 	}
 
 	timeStr, ok := raw.(string)
 	if !ok {
-		return time.Time{}, fmt.Errorf("campo '%s' não é uma string, é %T", fieldName, raw)
+		return time.Time{}, fmt.Errorf("the field %s is not a string is %T", fieldName, raw)
 	}
 
 	t, err := time.Parse(timeFormat, timeStr)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("erro ao parsear data e hora de '%s': %w", fieldName, err)
+		return time.Time{}, fmt.Errorf("error the to parser data to hour of '%s': %w", fieldName, err)
 	}
 	return t, nil
 }
