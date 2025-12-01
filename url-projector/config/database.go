@@ -1,63 +1,71 @@
-package config
+package configs
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"os"
+
 	"time"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB *mongo.Client
-
-func ConnectDB() *mongo.Client {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-
-	mongoURI := os.Getenv("MONGO_URI")
-	if mongoURI == "" {
-		log.Fatalf("MONGO_URL not set in .env file")
-	}
-
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
-	if err != nil {
-		log.Fatalf("Failed to create MongoDB client: %v", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	err = client.Connect(ctx)
-	if err != nil {
-		log.Fatalf("Failed to connect to MongoDB: %v", err)
-	}
-
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		log.Fatalf("Failed to ping MongoDB: %v", err)
-	}
-
-	DB = client
-	log.Printf("Mongodb connected!!")
-	return DB
+type MongoConfig struct {
+	URI    string
+	DBName string
 }
 
-func GetCollection(collectionName string) *mongo.Collection {
-	dbName := os.Getenv("MONGO_DB_NAME")
-	if dbName == "" {
-		log.Fatal("MONGO_DB_NAME not set in .env file")
+func InitMongoDBConnection(cfg MongoConfig) (*mongo.Client, error) {
+	if cfg.URI == "" {
+		return nil, fmt.Errorf("variável MONGO_URI não configurada")
 	}
-	return DB.Database(dbName).Collection(collectionName)
+
+	clientOptions := options.Client().ApplyURI(cfg.URI)
+
+	const maxRetries = 10
+	const retryDelay = 5 * time.Second
+	var _ *mongo.Client
+
+	for i := 0; i < maxRetries; i++ {
+		log.Printf("Tentando conectar ao MongoDB... Tentativa %d/%d", i+1, maxRetries)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		client, err := mongo.Connect(ctx, clientOptions)
+		cancel()
+
+		if err == nil {
+			ctxPing, cancelPing := context.WithTimeout(context.Background(), 2*time.Second)
+			err = client.Ping(ctxPing, nil)
+			cancelPing()
+
+			if err == nil {
+				log.Println("MongoDB conectado com sucesso!")
+				return client, nil
+			}
+
+			log.Printf("Ping do MongoDB falhou. Tentando novamente... Erro: %v", err)
+		} else {
+			log.Printf("Conexão inicial com MongoDB falhou. Tentando novamente... Erro: %v", err)
+		}
+
+		if i < maxRetries-1 {
+			time.Sleep(retryDelay)
+		}
+	}
+
+	return nil, fmt.Errorf("falha ao conectar e pingar o MongoDB após %d tentativas", maxRetries)
 }
 
-func GetDB() *mongo.Database {
-	dbName := os.Getenv("MONGO_DB_NAME")
-	if dbName == "" {
-		log.Fatal("MONGO_DB_NAME not set in .env file")
+func GetCollection(client *mongo.Client, dbName, collectionName string) *mongo.Collection {
+	if client == nil {
+		log.Fatal("Cliente MongoDB não foi inicializado.")
 	}
-	return DB.Database(dbName)
+
+	if dbName == "" {
+		log.Fatal("MONGO_DB_NAME não pode ser vazio.")
+	}
+
+	return client.Database(dbName).Collection(collectionName)
 }
