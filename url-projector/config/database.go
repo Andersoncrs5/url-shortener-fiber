@@ -58,7 +58,7 @@ func InitMongoDBConnection(cfg MongoConfig) (*mongo.Client, error) {
 	return nil, fmt.Errorf("falha ao conectar e pingar o MongoDB após %d tentativas", maxRetries)
 }
 
-func GetCollection(client *mongo.Client, dbName, collectionName string) *mongo.Collection {
+func GetCollection(client *mongo.Client, dbName, collectionName string, cfg MongoConfig) *mongo.Collection {
 	if client == nil {
 		log.Fatal("Cliente MongoDB não foi inicializado.")
 	}
