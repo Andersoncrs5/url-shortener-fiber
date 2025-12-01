@@ -1,6 +1,6 @@
 package cdc
 
-type DebeziumPayload struct {
+type Envelope struct {
 	Schema  struct{} `json:"schema"`
 	Payload struct {
 		Before   map[string]interface{} `json:"before"`
