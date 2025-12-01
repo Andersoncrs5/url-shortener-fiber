@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	models "linkfast/url-projector/model"
-	"linkfast/write-api/utils/consts"
+	"linkfast/url-projector/utils/consts"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
