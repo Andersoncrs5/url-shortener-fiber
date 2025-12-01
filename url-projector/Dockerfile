@@ -7,13 +7,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY go.mod go.sum ./
-RUN go mod download
 
 COPY . .
+
+RUN go mod download
+RUN go mod tidy
 
 RUN go build -o url_projector main.go
 
 FROM debian:bookworm-slim
+
 RUN apt-get update && apt-get install -y \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
