@@ -120,6 +120,8 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: pgserver1.link_fast_sc.links
+      MONGO_URI: mongodb://root:rootpassword@mongo:27017
+      MONGO_DB_NAME: links_fast_db
     
 volumes:
   postgres-data: {}
