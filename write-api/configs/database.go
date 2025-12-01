@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -147,8 +146,6 @@ func RegisterDebeziumConnector() error {
 	BATCH_SIZE := getEnvWithFallback("BATCH_SIZE", "")
 	QUEUE_SIZE := getEnvWithFallback("QUEUE_SIZE", "")
 
-	PARTITIONS_INT, err_parse := strconv.Atoi(PARTITIONS_STR)
-
 	required := map[string]string{
 		"DATABASE_HOSTNAME": DATABASE_HOSTNAME,
 		"USER_CDC":          USER_CDC,
@@ -166,10 +163,6 @@ func RegisterDebeziumConnector() error {
 		if value == "" {
 			log.Fatalf("Environment variable %s not defined!", key)
 		}
-	}
-
-	if err_parse != nil {
-		log.Fatalf("Error parse PARTITIONS_STR to PARTITIONS_INT")
 	}
 
 	log.Println("All required environment variables to cdc loaded successfully!")
@@ -197,13 +190,11 @@ func RegisterDebeziumConnector() error {
 
 			"publication.name": "dbz_publication",
 
-			"decimal.handling.mode":             "string",
-			"hstore.handling.mode":              "json",
-			"topic.creation.default.partitions": PARTITIONS_INT,
+			"decimal.handling.mode": "string",
+			"hstore.handling.mode":  "json",
 
-			"topic.creation.enable": true,
-			"max.batch.size":        BATCH_SIZE,
-			"max.queue.size":        QUEUE_SIZE,
+			"max.batch.size": BATCH_SIZE,
+			"max.queue.size": QUEUE_SIZE,
 		},
 	}
 
