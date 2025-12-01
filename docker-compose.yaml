@@ -14,6 +14,17 @@ services:
 
     command: postgres -c wal_level=logical
    
+  mongo:
+    image: mongo:latest
+    container_name: mongo-link-fast
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    volumes:
+      - mongo-data:/data/db
+
   kafka:
     image: confluentinc/cp-kafka:latest
     hostname: kafka
@@ -63,6 +74,10 @@ services:
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
 
+      CONNECT_TOPIC_CREATION_ENABLE: true
+      CONNECT_TOPIC_CREATION_DEFAULT_REPLICATION_FACTOR: 1
+      CONNECT_TOPIC_CREATION_DEFAULT_PARTITIONS: 1
+
     volumes:
       - ./plugins:/etc/kafka-connect/jars
         
@@ -94,6 +109,19 @@ services:
 
       API_URL_CONNECT: http://connect:8083/connectors
 
+  url_projector:
+    build: ./url-projector
+    container_name: url_projector_link_fast
+    depends_on:
+      - connect 
+      - kafka
+      - db
+      - mongo
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: pgserver1.link_fast_sc.links
+    
 volumes:
   postgres-data: {}
   kafka-data: {}
+  mongo-data: {}
