@@ -11,7 +11,8 @@ services:
       POSTGRES_PASSWORD: 12345678
     volumes:
       - postgres-data:/var/lib/postgresql/data
-
+    networks:
+      - link_fast_net
     command: postgres -c wal_level=logical
    
   mongo:
@@ -19,6 +20,8 @@ services:
     container_name: mongo-link-fast
     ports:
       - "27017:27017"
+    networks:
+      - link_fast_net
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: rootpassword
@@ -32,6 +35,8 @@ services:
     ports:
       - "9092:9092"
       - "9093:9093"
+    networks:
+      - link_fast_net
     environment:
       KAFKA_KRAFT_MODE: "true"  
       KAFKA_PROCESS_ROLES: controller,broker  
@@ -59,6 +64,8 @@ services:
     depends_on:
       - kafka 
       - db
+    networks:
+      - link_fast_net
     environment:
       CONNECT_BOOTSTRAP_SERVERS: "kafka:9092"
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/doc,/etc/kafka-connect/jars"
@@ -90,6 +97,8 @@ services:
       - db
     ports:
       - "8888:8888"
+    networks:
+      - link_fast_net
     environment:
       PG_URL: postgres://postgres:12345678@db:5432/links_db?sslmode=disable
       PG_USER: postgres
@@ -112,6 +121,8 @@ services:
   url_projector:
     build: ./url-projector
     container_name: url_projector_link_fast
+    networks:
+      - link_fast_net
     depends_on:
       - connect 
       - kafka
@@ -123,6 +134,29 @@ services:
       MONGO_URI: mongodb://root:rootpassword@mongo:27017
       MONGO_DB_NAME: links_fast_db
     
+  read_api:
+    build: ./read-api
+    container_name: read_api_link_fast
+    depends_on:
+      - connect 
+      - kafka
+      - db
+      - mongo
+      - url_projector
+    networks:
+      - link_fast_net
+    ports:
+      - "9090:9090"
+    environment:
+      MONGO_URI: mongodb://root:rootpassword@mongo:27017
+      MONGO_DB_NAME: links_fast_db
+
+      API_HOST: 9090
+
+networks:
+  link_fast_net:
+    driver: bridge
+
 volumes:
   postgres-data: {}
   kafka-data: {}
