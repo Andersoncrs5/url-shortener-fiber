@@ -9,6 +9,6 @@ import (
 func LinkRoute(app *fiber.App, linkHandler handlers.LinkHandler) {
 	router := app.Group("/api/v1/links")
 
-	router.Get("/:id", linkHandler.GetByID)
-	router.Get("/:code/code", linkHandler.GetByShotCode)
+	router.Get("/:id/id", linkHandler.GetByID)
+	router.Get("/:code", linkHandler.GetByShotCode)
 }
