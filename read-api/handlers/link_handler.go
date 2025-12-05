@@ -131,7 +131,7 @@ func (h *linkHandler) GetByShotCode(c *fiber.Ctx) error {
 		traceID = "unknown_trace"
 	}
 
-	shortCode := c.Params("shortCode")
+	shortCode := c.Params("code")
 	if shortCode == "" {
 		res := res.ResponseHttp[string]{
 			Timestamp: time.Now(),
