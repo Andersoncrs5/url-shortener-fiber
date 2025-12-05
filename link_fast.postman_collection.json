@@ -1,0 +1,85 @@
+{
+	"info": {
+		"_postman_id": "902263a9-4e96-45f5-aa53-5ff0fae8cc6a",
+		"name": "link_fast",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "41258403"
+	},
+	"item": [
+		{
+			"name": "post create link",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"long_url\": \"https://github.com/andersoncrs5/\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseURL}}/api/v1/links"
+			},
+			"response": []
+		},
+		{
+			"name": "GetByCode",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"long_url\": \"https://github.com/andersoncrs5/\"\n}"
+				},
+				"url": "{{baseURL}}/api/v1/links/H1MnLfVAEAA/code"
+			},
+			"response": []
+		},
+		{
+			"name": "GetById",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "{{baseURL}}/api/v1/links/2257190916584378368"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "{{baseURL}}/api/v1/links/2257190916584378368"
+			},
+			"response": []
+		},
+		{
+			"name": "GetByID readApi",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"long_url\": \"https://github.com/andersoncrs5/\"\n}"
+				},
+				"url": "http://127.0.0.1:8080/api/v1/links"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURL",
+			"value": "",
+			"type": "default"
+		}
+	]
+}
