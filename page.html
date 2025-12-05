@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linkfast - Teste de API</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-lg bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-2 text-center">
+            🔗 Teste do Linkfast Read API
+        </h1>
+        <p class="text-gray-500 mb-6 text-center">
+            Insira o código curto para simular o redirecionamento.
+        </p>
+
+        <div class="space-y-4">
+            <div>
+                <label for="shortCode" class="block text-sm font-medium text-gray-700 mb-1">Código Curto</label>
+                <input type="text" id="shortCode" placeholder="Ex: gopher123" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-sky-500 focus:border-sky-500 shadow-sm" required>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+                <!-- BOTÃO DE REDIRECIONAMENTO (ÚNICO) -->
+                <button id="btnRedirect" class="flex-1 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md hover:shadow-lg disabled:opacity-50" onclick="handleRedirect()">
+                    Simular Redirecionamento (Endpoint: /:code)
+                </button>
+            </div>
+        </div>
+
+        <div id="alertBox" class="mt-4 p-4 rounded-lg hidden" role="alert">
+            <div class="flex items-center">
+                <div id="alertIcon" class="mr-3"></div>
+                <p id="alertText" class="font-medium"></p>
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-400 mt-6 text-center">
+            * Certifique-se de que sua API está rodando em <code id="apiBaseUrlDisplay">http://localhost:9090</code>.
+        </p>
+
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:9090/api/v1/links'; 
+
+        const shortCodeInput = document.getElementById('shortCode');
+        const btnRedirect = document.getElementById('btnRedirect');
+        const alertBox = document.getElementById('alertBox');
+        const alertText = document.getElementById('alertText');
+        const alertIcon = document.getElementById('alertIcon');
+
+        document.getElementById('apiBaseUrlDisplay').textContent = API_BASE_URL;
+
+        function showAlert(message, type = 'error') {
+            alertBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+            
+            if (type === 'success') {
+                alertBox.classList.add('bg-green-100', 'text-green-800');
+                alertIcon.innerHTML = `<svg class="w-5 h-5 text-green-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`;
+            } else {
+                alertBox.classList.add('bg-red-100', 'text-red-800');
+                alertIcon.innerHTML = `<svg class="w-5 h-5 text-red-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>`;
+            }
+            alertText.textContent = message;
+        }
+
+        function handleRedirect() {
+            const code = shortCodeInput.value.trim();
+            if (!code) {
+                showAlert('Por favor, insira um código curto.');
+                return;
+            }
+            
+            const redirectUrl = `${API_BASE_URL}/${code}`;
+            showAlert(`Redirecionando para: ${redirectUrl}`, 'success');
+            window.location.href = redirectUrl;
+        }
+
+        shortCodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleRedirect();
+            }
+        });
+    </script>
+</body>
+</html>
