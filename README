@@ -1,3 +1,33 @@
-# One simple shorter url in go
+# 🔗 Linkfast: A High-Throughput URL Shortener
 
-status : Finished
+​🚀 Project Overview
+
+​Linkfast is a scalable, distributed URL shortening service built on a microservices architecture. It is designed for high availability and low-latency reads by implementing the Command Query Responsibility Segregation (CQRS) pattern.
+​The project separates the write model (PostgreSQL, responsible for transactional integrity) from the read model (MongoDB, optimized for fast querying). Data synchronization between the two models is achieved asynchronously using Apache Kafka and Kafka Connect (specifically, the Debezium connector for Change Data Capture - CDC).
+​
+📐 Architecture and Data Flow
+
+​The Linkfast system is composed of four main services orchestrated by Docker Compose:
+​Write API (write_api - Go/Fiber):
+
+​Responsibility (Command): Handles link creation (POST requests).
+​Data Flow: Inserts new short URLs directly into the PostgreSQL database.
+​Key Feature: PostgreSQL is configured with wal_level=logical to enable Change Data Capture.
+​PostgreSQL (db):
+​Role: The canonical source of truth (Write Model). Ensures data persistence and transactional integrity.
+​Kafka & Kafka Connect:
+​Kafka (kafka): The central message bus. Receives change events from Kafka Connect.
+​Kafka Connect (connect): Hosts the Debezium PostgreSQL Source Connector. It monitors the PostgreSQL WAL (Write-Ahead Log) for changes in the links table and immediately streams these changes as events to a Kafka topic (pgserver1.link_fast_sc.links).
+​URL Projector (url_projector - Go/Fiber):
+​Role (Query Model Update): Consumes the Kafka topic containing the link creation events.
+​Data Flow: Transforms the change events and projects (writes) the link data into the MongoDB collection. This process denormalizes the data for optimal reading performance.
+​Read API (read_api - Go/Fiber):
+​Responsibility (Query): Handles link lookups and redirection requests (GET requests).
+​Data Flow: Queries the highly-performant MongoDB (Read Model) directly, providing fast responses for every link click.
+​
+🛠️ Technology Stack
+
+- fiber Go 
+- Debezium
+- Kafka e Kafka connect 
+- mongo
